@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>                         
+    <head>
+	<meta charset="utf-8">
+        <script src="js/jquery-2.0.0.min.js"></script>
+        <script src="js/jquery.object-fit.min.js"></script>
+	
+        <script>
+            String.prototype.endsWith = function(suffix) {
+                return this.indexOf(suffix, this.length - suffix.length) !== -1;
+            };
+
+            var i;
+            var config = [];
+            var timeout;
+            $(document).ready(function(){
+
+                $("body").keydown(function(e){
+                    refreshConfig();
+                    if(e.keyCode == 39){
+                        clearTimeout(timeout);
+                        i = (i) % config.length;
+                        slide(i);	
+                    }else if(e.keyCode == 37){
+                        clearTimeout(timeout);
+                        i = (i - 2) % config.length;
+                        if(i<0){
+                            i = config.length-i;
+                        }
+                        slide(i);
+                    }else if(e.keyCode == 70){
+			fullscreen();
+			}
+                });
+                fullscreen();
+                i=0;
+                slide(0);
+            });
+
+            function fullscreen(){
+                $("#main")[0].mozRequestFullScreen();
+            }
+
+            function set_timeout(time){
+                if(config && config.length > i){
+
+                    if(time > 0){
+                        timeout = setTimeout("slide(i)",time*1000);
+                        }else{
+                        timeout = setTimeout("slide(i)",5000);
+                    }
+                }
+                else{
+                    i = 0;
+                    timeout = setTimeout("slide(0)",500);
+                }
+            }
+
+            function slide(number){
+                refreshConfig();
+                if(config && config.length > number){
+                    var href = config[number].href;
+                    document.title=i;
+                    if(href.endsWith(".html")){
+                        $('#main').load(href);	
+                    }
+                    else if(href.endsWith(".png") || href.endsWith(".jpg")|| href.endsWith(".gif"))
+                    {
+                        $('#main').html("<div style ='margin:auto; text-align:center; height:inherit'><img style='height:100%; width:100%;'"+
+			" src=\""+href+"\"></img></div>");
+			
+			$('#main img').objectFit({type: 'contain', hideOverflow: true});
+			$('#main').css('background-color','#000');
+                    }
+                    else
+                    {
+                        $('#main').html("<iframe width=\"100%\" height=\"100%\" src=\""+href+"#toolbar=0&navpanes=0&scrollbar=0\"></iframe>");
+                    }
+
+                    var time = config[i].time;
+                    i = (i + 1) % config.length;
+                    set_timeout(time);
+                    }
+                    else{
+                    set_timeout(500);
+                }
+            }
+            function refreshConfig(){
+                json_config = localStorage.config;
+                if(json_config){
+                    config = JSON.parse(json_config);
+                    }else{
+                    config = [];		
+                }
+                if(i > config.length ){
+                    i = config.length-1;		
+                }
+            }
+
+
+        </script>
+
+        <style>
+            body {
+                font-size: 2em;
+                font-family: sans;
+                background:#444;
+            }
+            #main {
+                background: white;
+color:black;
+                width:800px;
+                height:600px;
+                margin: auto;
+                /*padding: 1em;*/
+		padding 0em;
+                box-shadow: 0 0 1em black;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="main">
+            <h2>InfoBeamer</h2>
+            <p>No slides found<p>
+        </div>
+        <div>
+            <button onclick="fullscreen();">Fullscreen</button>
+        </div>
+    </body>
+</html>

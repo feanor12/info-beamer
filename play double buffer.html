@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>                         
+    <head>
+	<meta charset="utf-8">
+        <script src="js/jquery-2.0.0.min.js"></script>
+        <script src="js/jquery.object-fit.min.js"></script>
+	
+        <script>
+            String.prototype.endsWith = function(suffix) {
+                return this.indexOf(suffix, this.length - suffix.length) !== -1;
+            };
+
+            var i;
+            var config = [];
+            var timeout;
+		var buffer = "#buffer2";
+            $(document).ready(function(){
+
+                $("body").keydown(function(e){
+                    refreshConfig();
+                    if(e.keyCode == 39){
+                        clearTimeout(timeout);
+                        i = (i) % config.length;
+                        slide(i);	
+                    }else if(e.keyCode == 37){
+                        clearTimeout(timeout);
+                        i = (i - 2) % config.length;
+                        if(i<0){
+                            i = config.length-i;
+                        }
+                        slide(i);
+                    }else if(e.keyCode == 70){
+			fullscreen();
+			}
+                });
+                fullscreen();
+                i=0;
+                slide(0);
+            });
+
+            function fullscreen(){
+                $("#main")[0].mozRequestFullScreen();
+            }
+
+            function set_timeout(time){
+                if(config && config.length > i){
+
+                    if(time > 0){
+                        timeout = setTimeout("slide(i)",time*1000);
+                        }else{
+                        timeout = setTimeout("slide(i)",5000);
+                    }
+                }
+                else{
+                    i = 0;
+                    timeout = setTimeout("slide(0)",500);
+                }
+            }
+	
+		function swapbuffer(){
+			$(buffer).css("opacity","1");
+			if(buffer == "#buffer1"){
+				$("#buffer2").animate({opacity:0},1000,function(){
+					$("#buffer2").css("z-index","0");
+					$(buffer).css("z-index","10");
+					buffer = "#buffer2";
+				});
+			}
+			else if(buffer == "#buffer2"){
+				$("#buffer1").animate({opacity:0},1000,function(){
+					$("#buffer1").css("z-index","0");
+					$(buffer).css("z-index","10");
+					buffer = "#buffer1";
+				});
+			}
+		}		
+
+		function preload_slide(number){
+		refreshConfig();
+                if(config && config.length > number){
+                    i = (i + 1) % config.length;
+                    var href = config[number].href;
+                    document.title=i;
+                    if(href.endsWith(".html")){
+                        $(buffer).load(href);	
+			$(buffer).css('background-color','#fff');
+
+                    }
+                    else if(href.endsWith(".png") || href.endsWith(".jpg")|| href.endsWith(".gif"))
+                    {
+                        $(buffer).html("<div style ='margin:auto; text-align:center; height:inherit'><img style='height:100%; width:100%;'"+
+			" src=\""+href+"\"></img></div>");
+			
+			$(buffer + ' img').objectFit({type: 'contain', hideOverflow: true});
+			$(buffer).css('background-color','#000');
+                    }
+                    else
+                    {
+                        $(buffer).html("<iframe width=\"100%\" height=\"100%\" src=\""+href+"#toolbar=0&navpanes=0&scrollbar=0\"></iframe>");
+                    }
+
+			if(i == 0){
+                    var time = config[config.length-1].time;
+
+		}else{
+                    var time = config[(i-1)].time;
+
+}
+                    set_timeout(time);
+                    }
+                    else{
+                    set_timeout(500);
+                }
+
+
+		}
+
+            function slide(number){
+		swapbuffer();
+		preload_slide(number);
+            }
+            function refreshConfig(){
+                json_config = localStorage.config;
+                if(json_config){
+                    config = JSON.parse(json_config);
+                    }else{
+                    config = [];		
+                }
+                if(i > config.length ){
+                    i = config.length-1;		
+                }
+            }
+
+
+        </script>
+
+        <style>
+            body {
+                font-size: 2em;
+                font-family: sans;
+                background:#444;
+            }
+            #main {
+                background: white;
+color:black;
+                width:800px;
+                height:600px;
+                margin: auto;
+                /*padding: 1em;*/
+		padding 0em;
+                box-shadow: 0 0 1em black;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="main" style="position:relative;">
+	<div id="buffer1" style="width:100%;height:100%;position:absolute;z-index:10;">
+		<h2>InfoBeamer</h2>
+		<p>No slides found<p>
+		</div>
+		<div id="buffer2" style="z-index:0; width:100%; height:100%; position:absolute;"></div>	
+                 </div>
+        <div>
+            <button onclick="fullscreen();">Fullscreen</button>
+        </div>
+    </body>
+</html>
