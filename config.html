@@ -1,195 +1,152 @@
 <!DOCTYPE html>
 <html>                         
-    <head>
-        <script src="js/jquery-2.0.0.min.js"></script>
-        <script src="js/jquery-ui-1.10.3/ui/jquery-ui.js"></script>
-        <script>
+<head>
+<meta charset="utf-8"></meta>
+<script src="js/jquery-1.10.2.js"></script>
+<script src="js/jquery-ui-1.10.3/ui/jquery-ui.js"></script>
+<script src="js/underscore.js"></script>
+<script src="js/backbone-min.js"></script>
+<script src="js/backbone.localStorage.js"></script>
+<script>
 
-            Array.prototype.remove = function(from, to) {
-                var rest = this.slice((to || from) + 1 || this.length);
-                this.length = from < 0 ? this.length + from : from;
-                return this.push.apply(this, rest);
-            };
+$(document).ready(function(){
+        Array.prototype.remove = function(from, to) {
+        var rest = this.slice((to || from) + 1 || this.length);
+        this.length = from < 0 ? this.length + from : from;
+        return this.push.apply(this, rest);
+        };
 
+        var Slide = Backbone.Model.extend({
+initialize: function(){
+}
+});
 
-            var slides = [];
-            var config = [];
-            $(document).ready(function(){
+        var Slides = Backbone.Collection.extend({
+localStorage: new Backbone.LocalStorage("InfoBeamer:Slides"),
+model: Slide                                
+});
 
-                var ls = localStorage.config;
-                if(ls){
-                    config = JSON.parse(ls);
-                    updateTable();
-                }
+var slides = new Slides();
 
-                $('#play').click(function(){
-                    generateConfig();
-                    window.open("./play.html");
-                })
+        var ConfigView = Backbone.View.extend({
+initialize: function(){
+this.render();
+this.listenTo(slides, 'add', this.addOne);
+this.listenTo(slides,'reset',this.addAll);
+slides.fetch();
+},
+render: function(){
+var view = _.template($('#config-view').html());
+this.$el.html(view);
+},
+events: {
+"click #add": "addSlide",
+"click #play": "openPlayer"
+},
 
-                $("#save").click(function(){
-                    generateConfig();
-                });
-                $("#add").click(function(){
-                    slides = $("#myfiles")[0].files;
-                    for(var i = 0; i<slides.length;i++){
-                        addToConfig(i);
-                    }
-                });
+openPlayer: function(){
+window.open("./play.html");
+},
+addSlide: function(){
+var files = $("#myfiles")[0].files;
+for(var i = 0; i<files.length;i++){
+var file= files[i]; 
+var reader = new FileReader();
+reader.slidename = file.name;
+reader.onload = function(r){
+    var node = $('<div id="main"></div>');
+    node.html(r.target.result);
+    var fc = node.find(':first');
+    var time = fc.data('time');
+    var href = "./Folien/"+this.slidename;
+    slides.create({time: time, href: href});
+}  
+reader.readAsText(file);
+}
+},
+addAll: function(){
+        slides.each(this.addOne,this);
+        },
+addOne: function(slide){
+        var view = new SlideView({model: slide});
+        $('#table').append(view.render().el);
+        $('#table').sortable();
+        }
 
-                $('#save_as').click(function(){
-                    generateConfig();
-                    uriContent = "data:application/octet-stream," + 
-                    encodeURIComponent(JSON.stringify(config));
-                    window.open(uriContent,"InfoBeamer.config");
-                });
+});
 
+var SlideView = Backbone.View.extend({
+       tagName: "tr",
+       render: function(){
+        var view = _.template($('#table-row').html(),this.model.toJSON());
+        this.$el.html(view);
+        return this;
+       }
+        });
 
-                $('body').bind('dragenter',function(e){
-                    e.stopPropagation();
-                    e.preventDefault();
-                });
+var configView = new ConfigView({el: $('#main')});
+});
 
-                $('body').bind('dragover',function(e){
-                    e.stopPropagation();
-                    e.preventDefault();
-                });
+</script>
 
-                $('body').bind('dragexit',function(e){
-                    e.stopPropagation();
-                    e.preventDefault();
-                });
+<script id="table-row" type="text/template">
+                <td class="link"><%= href %></td>
+                <td>
+                    <input type="text" value="<%= time %>"></input>
+                </td>
+                <td>
+                    <button >Delete</button>
+                </td>                                   
+</script>
 
-                function loadDrawing(e){
-                    config = JSON.parse(e.target.result);
-                    updateTable();
-                }
-                $('body').bind('drop',function(e){
-                    e = e.originalEvent;	
-                    e.stopPropagation();
-                    e.preventDefault();
-                    var files = e.dataTransfer.files;
-                    if(files.length > 0){
-                        var reader = new FileReader();
-                        reader.onload = loadDrawing;
-                        reader.readAsText(files[0]);
-                    }
-                });
-
-
-
-            });
-
-            function generateConfig(){
-                var children = $("#table")[0];
-                config=[];
-                for(var i = 0; i < children.rows.length; i++){
-                    var time_ = $(children.rows[i]).find('input')[0].value;
-                    var href_ = children.rows[i].cells[0].innerHTML;
-                    config.push({"id":i,"time":time_,"href":href_});
-                    localStorage.config = JSON.stringify(config);
-                }
-            }
-
-
-            function saveLocal(){
-                localStorage['slides']=JSON.stringify(slides);
-                updateTable();
-            }
-
-            function loadLocal(){
-                ls = localStorage['slides'];
-                if(ls){
-                    slides = JSON.parse(ls);
-                    }else{
-                    slides = [];			
-                }
-            }
-
-            function addToConfig(number){
-                var slide = slides[number];
-                var reader = new FileReader();
-                reader.number = number;
-                reader.onload = function(r){
-                    var node = $('<div id="main"></div>');
-                    node.html(r.target.result);
-                    var fc = node.find(':first');
-                    var time_ = fc.data('time');
-                    var id_ = r.target.number;
-                    var href_ = "./Folien/"+slides[id_].name;
-                    config.push({time:time_ ,href:href_});
-                    localStorage.config = JSON.stringify(config);
-                    updateTable();
-                }	
-                reader.readAsText(slide);
-            };
-
-            function updateTable(){
-                $("#table").html("");
-                for(var i = 0;i < config.length;i++){
-                    $("#table").append("<tr><td class=\"link\">"+
-                            config[i].href+
-                            "</td><td><input type='text' value=\""+
-                            config[i].time+"\"></input></td><td>"+
-                            "<button onclick=\"deleteElement("+i+
-                                ")\">Delete</button></td></tr>");
-                }
-
-                $("#table").sortable();
-
-            }
-
-            function deleteElement(number){
-                config.remove(number);
-                updateTable();
-            }
-
-        </script>
-
-        <style>
-            body {
-                font-size: 2em;
-                font-family: sans;
-                background:#444;
-            }
-            #main {
-                background: #eee;
-                width:800px;
-                margin: auto;
-                padding: 1em;
-                box-shadow: 0 0 1em black;
-            }
-            article h1 {
-            }
-            table {
-                width: 100%;
-                border: 1px solid Gray;
-                border-collapse: collapse;
-                font-size:0.5em;
-            }
-
-            td {
-                border: 1px solid Gray;
-            }
-        </style>
-    </head>
-    <body>
-        <div id="main">
-            <h2>InfoBeamer</h2>
-            <p>Select your pages and you are ready to go.</p>
-            <input id="myfiles" multiple type="file">
-            <input id="add" type="submit" value="add">
-            <input id="save" type="submit" value="save">   
-            <input id="save_as" type="submit" value="save as">   
-
-            <input id="play" type="submit" value="play">
-            <table >
-                <thead></td><td>name</td><td>seconds</td></tr>
+<script id="config-view" type="text/template">
+<h2>InfoBeamer</h2>
+    <p>Select your pages and you are ready to go.</p>
+    <input id="myfiles" multiple type="file">
+    <input id="add" type="submit" value="add">
+    <input id="save" type="submit" value="save">   
+    <input id="save_as" type="submit" value="save as">   
+    <input id="play" type="submit" value="play">
+    <table >
+        <thead>
+            <tr>
+            <td>name</td>
+            <td>seconds</td>
+            </tr>
         </thead>
         <tbody id="table"></tbody>
-    </table>
-</div>
-<div>
-</div>
-    </body>
+    </table>     
+</script>
+
+<style>
+body {
+    font-size: 2em;
+    font-family: sans;
+    background:#444;
+}
+#main {
+    background: #eee;
+    width:800px;
+    margin: auto;
+    padding: 1em;
+    box-shadow: 0 0 1em black;
+}
+article h1 {
+}
+table {
+    width: 100%;
+    border: 1px solid Gray;
+    border-collapse: collapse;
+    font-size:0.5em;
+}
+
+td {
+    border: 1px solid Gray;
+}
+</style>
+</head>
+
+<body>
+<div id="main"> </div>
+</body>
 </html>
